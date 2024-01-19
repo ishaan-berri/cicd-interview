@@ -1,0 +1,86 @@
+version: 2.1
+
+# CONTEXT DEFINITIONS (configured in CircleCI UI):
+#
+#   pypi-publish — contains PYPI_TOKEN used to publish releases to PyPI
+
+workflows:
+  version: 2
+  build-and-test:
+    jobs:
+      - lint
+      - unit_tests
+      - bedrock_tests
+      - regression_tests
+      - pr_tests
+      - publish:
+          requires:
+            - pr_tests
+          context:
+            - pypi-publish
+          filters:
+            branches:
+              only: main
+
+jobs:
+  lint:
+    docker:
+      - image: cimg/python:3.11
+    steps:
+      - checkout
+      - run:
+          name: Install and run linter
+          command: pip install ruff && ruff check .
+
+  unit_tests:
+    docker:
+      - image: cimg/python:3.11
+    steps:
+      - checkout
+      - run:
+          name: Install dependencies
+          command: pip install -r requirements.txt
+      - run:
+          name: Run unit tests
+          command: pytest tests/ -v --tb=short
+
+  bedrock_tests:
+    docker:
+      - image: cimg/python:3.11
+    environment:
+      AWS_REGION: us-east-1
+    steps:
+      - checkout
+      - run:
+          name: Run Bedrock integration tests
+          command: pytest tests/test_bedrock.py -v
+
+  regression_tests:
+    docker:
+      - image: cimg/python:3.11
+    steps:
+      - checkout
+      - run:
+          name: Run regression tests
+          command: pytest tests/test_router.py -v
+
+  pr_tests:
+    docker:
+      - image: cimg/python:3.11
+    steps:
+      - checkout
+      - run:
+          name: Run PR validation tests
+          command: pytest tests/ -v --ignore=tests/test_bedrock.py
+
+  publish:
+    docker:
+      - image: cimg/python:3.11
+    steps:
+      - checkout
+      - run:
+          name: Build package
+          command: pip install build && python -m build
+      - run:
+          name: Publish to PyPI
+          command: pip install twine && twine upload dist/* --non-interactive
