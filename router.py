@@ -5,7 +5,7 @@ from typing import List, Optional
 
 
 class RouterConfig:
-    def __init__(self, max_retries: int = 3, fallback_models: Optional[List[str]] = None):
+    def __init__(self, max_retries: int = 1, fallback_models: Optional[List[str]] = None):
         self.max_retries = max_retries
         self.fallback_models = fallback_models or []
 
