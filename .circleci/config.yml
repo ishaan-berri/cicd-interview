@@ -3,6 +3,10 @@ version: 2.1
 # CONTEXT DEFINITIONS (configured in CircleCI UI):
 #
 #   pypi-publish — contains PYPI_TOKEN used to publish releases to PyPI
+#
+# SECURITY NOTE: Any job that references the 'pypi-publish' context will have
+# access to PYPI_TOKEN at runtime. Be careful about which jobs have this context,
+# especially jobs that run on pull_request events from forks.
 
 workflows:
   version: 2
@@ -12,15 +16,14 @@ workflows:
       - unit_tests
       - bedrock_tests
       - regression_tests
-      - pr_tests
+      - pr_tests:
+          context:
+            - pypi-publish
       - publish:
           requires:
             - pr_tests
           context:
             - pypi-publish
-          filters:
-            branches:
-              only: main
 
 jobs:
   lint:
@@ -49,6 +52,7 @@ jobs:
       - image: cimg/python:3.11
     environment:
       AWS_REGION: us-east-1
+      # TODO: add BEDROCK_MODEL_ID here once tests are updated to use env vars
     steps:
       - checkout
       - run:
