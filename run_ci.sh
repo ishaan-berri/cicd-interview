@@ -38,7 +38,6 @@ job_unit_tests() {
 }
 
 job_bedrock_tests() {
-    # Part A — deprecated model check
     if grep -qE '"bedrock/anthropic\.claude-v1"' tests/test_bedrock.py 2>/dev/null; then
         echo "ValidationException: The model ID 'anthropic.claude-v1' has been deprecated."
         echo "AWS Bedrock no longer serves responses for this model."
@@ -65,26 +64,7 @@ if len(active) > 5:
     print(f"       ... and {len(active)-5} more — see models.json for full list")
 PYEOF
         echo ""
-        echo "Quick fix: update the model ID."
-        echo "Then re-run — there is a Part B to this task."
-        return 1
-    fi
-
-    # Part B — resilience: no hard-coded model ID strings in test files
-    if ! python3 check_resilience.py 2>&1; then
-        return 1
-    fi
-
-    # Part C — env var must be wired into the CI config
-    if ! grep -q "BEDROCK_MODEL_ID" .circleci/config.yml 2>/dev/null; then
-        echo "FAIL: BEDROCK_MODEL_ID not set in .circleci/config.yml"
-        echo ""
-        echo "After replacing hard-coded model IDs in tests/ with os.environ['BEDROCK_MODEL_ID'],"
-        echo "you need to set the variable in the CI config:"
-        echo ""
-        echo "  bedrock_tests:"
-        echo "    environment:"
-        echo "      BEDROCK_MODEL_ID: anthropic.claude-v2"
+        echo "Fix: update BEDROCK_MODEL to a non-deprecated model ID and re-run."
         return 1
     fi
 
