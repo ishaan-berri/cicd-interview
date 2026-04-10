@@ -45,7 +45,9 @@ def check_config(config_path: str) -> list:
                         f"            - pypi-publish\n"
                         f"\n"
                         f"  pr_tests runs on pull requests, including PRs from untrusted forks.\n"
-                        f"  PYPI_TOKEN should only be accessible to jobs that publish packages."
+                        f"  PYPI_TOKEN should only be accessible to jobs that publish packages.\n"
+                        f"\n"
+                        f"  Docs: https://circleci.com/docs/contexts/#restrict-a-context-to-a-security-group"
                     )
 
     return issues
