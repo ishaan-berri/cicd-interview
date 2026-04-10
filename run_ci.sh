@@ -108,6 +108,43 @@ job_security_scan() {
     python3 check_security.py .circleci/config.yml 2>&1
 }
 
+job_docker_lint() {
+    if grep -qE "^FROM python:3\.[0-8]" Dockerfile 2>/dev/null; then
+        local tag
+        tag=$(grep -E "^FROM python:" Dockerfile | head -1 | sed 's/FROM python://' | awk '{print $1}')
+        echo "FAIL: Dockerfile uses python:${tag}"
+        echo ""
+        echo "  Dockerfile:"
+        echo "    FROM python:${tag}"
+        echo ""
+        echo "  Python 3.8 reached end-of-life on 2024-10-07."
+        echo "  EOL images no longer receive security patches."
+        echo ""
+        echo "  Docs: https://devguide.python.org/versions/"
+        return 1
+    fi
+    echo "Docker base image OK."
+}
+
+job_dependency_audit() {
+    if grep -qE "requests==2\.(18|19|20|21|22|23|24|25|26|27|28|29|30)\." requirements.txt 2>/dev/null || \
+       grep -qE "requests==2\.18\.0" requirements.txt 2>/dev/null; then
+        local ver
+        ver=$(grep "requests==" requirements.txt | tr -d ' ')
+        echo "FAIL: vulnerable dependency detected"
+        echo ""
+        echo "  requirements.txt:"
+        echo "    ${ver}"
+        echo ""
+        echo "  CVE-2023-32681: requests<2.31.0 leaks the Proxy-Authorization header"
+        echo "  to the destination server when following a redirect to a different host."
+        echo ""
+        echo "  Docs: https://github.com/advisories/GHSA-j8r2-6x86-q33q"
+        return 1
+    fi
+    echo "No known vulnerabilities found."
+}
+
 # ─── Runner ───────────────────────────────────────────────────────────────────
 
 run_job() {
@@ -144,8 +181,10 @@ echo "  ────────────────────────
 run_job lint
 run_job unit_tests
 run_job bedrock_tests
-run_job regression_tests
 run_job security_scan
+run_job docker_lint
+run_job dependency_audit
+run_job regression_tests
 
 echo "  ──────────────────────────────────────"
 echo ""
