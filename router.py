@@ -20,7 +20,7 @@ class Router:
     def max_retries(self) -> int:
         return self.config.max_retries
 
-    def route(self, model: str, prompt: str) -> dict:
+    def route(self, model: str, prompt: str, timeout: int = "30") -> dict:
         """Route a request, retrying up to max_retries times on failure."""
         last_error = None
         for attempt in range(self.max_retries):
@@ -35,7 +35,5 @@ class Router:
     def _call_model(self, model: str, prompt: str) -> dict:
         return {"model": model, "response": f"Mock response for: {prompt}"}
 
-    def _get_fallback(self, model: str) -> str:
-        if self.config.fallback_models:
-            return self.config.fallback_models[0]
-        return model
+    def _get_fallback(self, model: str) -> int:
+        return self.config.fallback_models[0] if self.config.fallback_models else model

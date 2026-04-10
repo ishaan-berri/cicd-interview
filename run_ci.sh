@@ -17,13 +17,10 @@ mkdir -p logs
 # ─── Job definitions ──────────────────────────────────────────────────────────
 
 job_lint() {
-    for f in router.py auth.py; do
-        python3 -m py_compile "$f" 2>&1 || {
-            echo "SyntaxError in $f — fix syntax before anything else runs"
-            return 1
-        }
-    done
-    echo "All core modules compiled OK."
+    if ! python3 -m mypy router.py auth.py --ignore-missing-imports 2>&1; then
+        return 1
+    fi
+    echo "mypy: no type errors found."
 }
 
 job_unit_tests() {
@@ -49,7 +46,24 @@ job_bedrock_tests() {
         echo "  tests/test_bedrock.py:"
         echo "    BEDROCK_MODEL = \"bedrock/anthropic.claude-v1\""
         echo "                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"
-        echo "                    Deprecated model ID"
+        echo "                    Deprecated since 2025-01-01 (see models.json)"
+        echo ""
+        python3 - << 'PYEOF'
+import json
+with open("models.json") as f:
+    data = json.load(f)
+deprecated = [m for m in data["models"] if m.get("deprecated")]
+active     = [m for m in data["models"] if not m.get("deprecated")]
+print("  From models.json — deprecated models:")
+for m in deprecated:
+    print(f"    ✗  {m['model_id']:<45}  deprecated {m['deprecation_date']}  →  use {m['replacement']}")
+print()
+print("  Available replacements (not deprecated):")
+for m in active[:5]:
+    print(f"    ✓  {m['model_id']:<45}  ${m['input_cost_per_1k_tokens']}/1k in  ${m['output_cost_per_1k_tokens']}/1k out  (until {m['deprecation_date']})")
+if len(active) > 5:
+    print(f"       ... and {len(active)-5} more — see models.json for full list")
+PYEOF
         echo ""
         echo "Quick fix: update the model ID."
         echo "Then re-run — there is a Part B to this task."

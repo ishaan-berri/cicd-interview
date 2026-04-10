@@ -17,6 +17,8 @@ For failing jobs, read `logs/<job_name>.log` to understand what went wrong.
 
 Fix the issue, re-run `./run_ci.sh`. Repeat until all green.
 
+Run `./run_history.sh` to see historical CI results across every commit — useful for spotting which commit introduced a regression.
+
 ## Ground rules
 
 - **Fix root causes, not symptoms.** Don't delete tests or comment out checks to get green.
