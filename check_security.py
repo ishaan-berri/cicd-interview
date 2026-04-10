@@ -42,17 +42,10 @@ def check_config(config_path: str) -> list:
                         f"\n"
                         f"      - pr_tests:\n"
                         f"          context:\n"
-                        f"            - pypi-publish    ← remove this\n"
+                        f"            - pypi-publish\n"
                         f"\n"
-                        f"  pr_tests runs on every pull request, including PRs from\n"
-                        f"  untrusted forks. Any job with the pypi-publish context\n"
-                        f"  can read PYPI_TOKEN — even a contributor's fork.\n"
-                        f"\n"
-                        f"  Fix: delete the context block from pr_tests so it looks like:\n"
-                        f"\n"
-                        f"      - pr_tests\n"
-                        f"\n"
-                        f"  Only the publish job needs pypi-publish."
+                        f"  pr_tests runs on pull requests, including PRs from untrusted forks.\n"
+                        f"  PYPI_TOKEN should only be accessible to jobs that publish packages."
                     )
 
     return issues
