@@ -11,21 +11,7 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 NC='\033[0m'
 
-pass="${GREEN}✓ pass${NC}"
-fail="${RED}✗ fail${NC}"
-na="${DIM}── n/a${NC}"
-
-# Read commits oldest-first using --reverse
-mapfile_compat() {
-    # portable replacement for mapfile (bash 3 compatible)
-    local arr_name=$1; shift
-    local i=0
-    while IFS= read -r line; do
-        eval "${arr_name}[$i]=\"\$line\""
-        ((i++))
-    done
-}
-
+# Read commits oldest-first
 SHAS=()
 MSGS=()
 i=0
@@ -36,26 +22,26 @@ while IFS='|' read -r sha msg; do
 done < <(git log --reverse --format="%h|%s")
 
 echo ""
-echo -e "${BOLD}  Historical CI Runs${NC}  ${DIM}(oldest at top · most recent at bottom)${NC}"
+echo -e "${BOLD}  Historical CI Runs${NC}  ${DIM}(oldest → most recent)${NC}"
 echo ""
-printf "  ${BOLD}%-8s  %-42s  %-14s  %-14s  %-14s  %-18s  %-14s${NC}\n" \
+
+# Header
+printf "  %-9s  %-38s  │  %-8s  %-10s  %-13s  %-16s  %-13s\n" \
     "SHA" "Commit" "lint" "unit_tests" "bedrock_tests" "regression_tests" "security_scan"
-echo "  ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────"
+printf "  %s\n" "─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────"
 
 # Pass/fail state at each commit index (0-based, oldest first)
-# Fields: lint  unit_tests  bedrock_tests  regression_tests  security_scan
-# Values: P=pass  F=fail  N=n/a (job/file didn't exist yet)
+# P=pass  F=fail  N=n/a
 #
-# Why each state changes:
-#   idx 0  f6fc8e8  Initial commit — only infra, no source to lint yet
-#   idx 1  5c7b579  Router added (max_retries=3) — lint fails (mypy errors in router.py), regression passes
-#   idx 2  99d2f41  Bedrock tests added with claude-v1 — bedrock starts failing
-#   idx 3  1e8b257  Secure CI config added — security passes
-#   idx 4  d9f8c9f  BAD COMMIT: max_retries changed to 1 — regression starts failing  ← find this one
-#   idx 5  6e84d3b  Insecure CI config (pypi-publish on pr_tests) — security fails again
-#   idx 6  4325c89  Syntax error test added — unit_tests fails
-#   idx 7  84b14a6  Deps update — no change
-#   idx 8  048fdf0  .gitignore + build script — no change
+#   idx 0  Initial commit — only infra, no source to lint yet
+#   idx 1  Router added (max_retries=3) — lint fails (mypy errors), regression passes
+#   idx 2  Bedrock tests added with claude-v1 — bedrock starts failing
+#   idx 3  Secure CI config added — security passes
+#   idx 4  BAD COMMIT: max_retries changed to 1 — regression starts failing
+#   idx 5  Insecure CI config (pypi-publish on pr_tests) — security fails again
+#   idx 6  Syntax error test added — unit_tests fails
+#   idx 7  Deps update — no change
+#   idx 8  .gitignore + build script — no change
 
 STATES=(
     "N N N N N"
@@ -67,14 +53,25 @@ STATES=(
     "F F F F F"
     "F F F F F"
     "F F F F F"
+    "F F F F F"
 )
 
-render() {
-    case "$1" in
-        P) printf "%b" "${pass}" ;;
-        F) printf "%b" "${fail}" ;;
-        N) printf "%b" "${na}"   ;;
+render_cell() {
+    # Prints a fixed-width colored cell WITHOUT relying on printf width for color
+    # $1 = state (P/F/N), $2 = column width
+    local state=$1
+    local width=$2
+    local text color
+    case "$state" in
+        P) text="✓ pass"; color="$GREEN" ;;
+        F) text="✗ fail"; color="$RED"   ;;
+        N) text="── n/a"; color="$DIM"   ;;
     esac
+    # Print colored text, then pad with spaces to reach width
+    local textlen=${#text}
+    local pad=$(( width - textlen ))
+    printf "%b%s%b" "$color" "$text" "$NC"
+    printf "%${pad}s" ""
 }
 
 for idx in "${!SHAS[@]}"; do
@@ -84,21 +81,26 @@ for idx in "${!SHAS[@]}"; do
 
     read -r lint unit bedrock regression security <<< "$state"
 
-    short_msg="${msg:0:40}"
-    [ "${#msg}" -gt 40 ] && short_msg="${msg:0:39}…"
+    short_msg="${msg:0:36}"
+    [ "${#msg}" -gt 36 ] && short_msg="${msg:0:35}…"
 
-    # Mark the bad commit visually
+    # Flag the bad commit
     marker=""
-    if echo "$msg" | grep -q "router config cleanup"; then
-        marker=" ${RED}←${NC}"
+    if echo "$msg" | grep -qi "router config cleanup"; then
+        marker="  ${RED}← regression introduced here${NC}"
     fi
 
-    printf "  %-8s  %-42s  " "$sha" "$short_msg"
-    printf "%-24b  " "$(render "$lint")"
-    printf "%-24b  " "$(render "$unit")"
-    printf "%-24b  " "$(render "$bedrock")"
-    printf "%-28b  " "$(render "$regression")"
-    printf "%b%b\n" "$(render "$security")" "$marker"
+    printf "  %-9s  %-38s  │  " "$sha" "$short_msg"
+    render_cell "$lint"       10
+    printf "  "
+    render_cell "$unit"       12
+    printf "  "
+    render_cell "$bedrock"    15
+    printf "  "
+    render_cell "$regression" 18
+    printf "  "
+    render_cell "$security"   13
+    printf "%b\n" "$marker"
 done
 
 echo ""
