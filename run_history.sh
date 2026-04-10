@@ -74,7 +74,10 @@ render_cell() {
     printf "%${pad}s" ""
 }
 
+total_states=${#STATES[@]}
+
 for idx in "${!SHAS[@]}"; do
+    [ "$idx" -ge "$total_states" ] && break
     sha="${SHAS[$idx]}"
     msg="${MSGS[$idx]}"
     state="${STATES[$idx]}"
