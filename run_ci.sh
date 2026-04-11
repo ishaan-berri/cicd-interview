@@ -34,6 +34,9 @@ job_unit_tests() {
         echo "to see the exact line."
         return 1
     }
+    if ! python3 tests/test_type_contracts.py 2>&1; then
+        return 1
+    fi
     echo "All unit tests compiled and passed."
 }
 

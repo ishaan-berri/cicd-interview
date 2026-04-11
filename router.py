@@ -22,6 +22,8 @@ class Router:
 
     def route(self, model: str, prompt: str, timeout: int = "30") -> dict:
         """Route a request, retrying up to max_retries times on failure."""
+        if timeout > 300:
+            raise ValueError(f"timeout must be <= 300s, got {timeout}")
         last_error = None
         for attempt in range(self.max_retries):
             try:
